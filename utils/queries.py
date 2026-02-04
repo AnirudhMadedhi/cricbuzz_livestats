@@ -287,5 +287,230 @@ QUERIES = {
             ORDER BY player_name, year;
         """
     },
+    # =========================
+# Advanced Level (Q17–Q25)
+# =========================
+
+    "Q17": {
+        "title": "Impact of winning the toss on match outcomes",
+        "level": "Advanced",
+        "query": """
+            WITH toss_outcomes AS (
+                SELECT
+                    toss_winner,
+                    toss_decision,
+                    winning_team
+                FROM matches
+                WHERE toss_winner IS NOT NULL
+            )
+            SELECT
+                toss_decision,
+                ROUND(
+                    SUM(CASE WHEN toss_winner = winning_team THEN 1 ELSE 0 END) * 100.0
+                    / COUNT(*),
+                    2
+                ) AS win_percentage
+            FROM toss_outcomes
+            GROUP BY toss_decision;
+        """
+    },
+
+    "Q18": {
+        "title": "Most economical bowlers in limited-overs cricket",
+        "level": "Advanced",
+        "query": """
+            SELECT
+                p.full_name AS bowler_name,
+                SUM(b.wickets) AS total_wickets,
+                ROUND(SUM(b.overs * b.economy_rate) / SUM(b.overs), 2) AS economy_rate,
+                COUNT(DISTINCT b.match_id) AS matches_played
+            FROM bowling_stats b
+            JOIN players p ON b.player_id = p.player_id
+            WHERE b.format IN ('odi', 't20i')
+            GROUP BY p.player_id
+            HAVING matches_played >= 10
+            ORDER BY economy_rate ASC;
+        """
+    },
+
+    "Q19": {
+        "title": "Most consistent batsmen since 2022",
+        "level": "Advanced",
+        "query": """
+            WITH stats AS (
+                SELECT
+                    b.player_id,
+                    b.runs,
+                    AVG(b.runs) OVER (PARTITION BY b.player_id) AS avg_runs
+                FROM batting_stats b
+                JOIN matches m ON b.match_id = m.match_id
+                WHERE strftime('%Y', m.match_date) >= '2022'
+            )
+            SELECT
+                p.full_name AS player_name,
+                ROUND(AVG(runs), 2) AS avg_runs,
+                ROUND(AVG((runs - avg_runs)*(runs - avg_runs)), 2) AS variance
+            FROM stats
+            JOIN players p ON stats.player_id = p.player_id
+            GROUP BY stats.player_id
+            HAVING COUNT(*) >= 10
+            ORDER BY variance ASC;
+        """
+    },
+
+    "Q20": {
+        "title": "Matches played and batting average by format",
+        "level": "Advanced",
+        "query": """
+            SELECT
+                p.full_name AS player_name,
+                b.format,
+                COUNT(DISTINCT b.match_id) AS matches_played,
+                ROUND(AVG(b.runs), 2) AS batting_average
+            FROM batting_stats b
+            JOIN players p ON b.player_id = p.player_id
+            GROUP BY p.player_id, b.format
+            HAVING COUNT(DISTINCT b.match_id) >= 20
+            ORDER BY player_name, b.format;
+        """
+    },
+
+    "Q21": {
+        "title": "Composite player performance ranking",
+        "level": "Advanced",
+        "query": """
+            WITH batting AS (
+                SELECT
+                    player_id,
+                    SUM(runs) * 0.01 +
+                    AVG(strike_rate) * 0.3 AS batting_points
+                FROM batting_stats
+                GROUP BY player_id
+            ),
+            bowling AS (
+                SELECT
+                    player_id,
+                    SUM(wickets) * 2 +
+                    (6 - AVG(economy_rate)) * 2 AS bowling_points
+                FROM bowling_stats
+                GROUP BY player_id
+            )
+            SELECT
+                p.full_name AS player_name,
+                ROUND(
+                    COALESCE(bat.batting_points, 0) +
+                    COALESCE(bowl.bowling_points, 0),
+                    2
+                ) AS total_score
+            FROM players p
+            LEFT JOIN batting bat ON p.player_id = bat.player_id
+            LEFT JOIN bowling bowl ON p.player_id = bowl.player_id
+            ORDER BY total_score DESC;
+        """
+    },
+
+    "Q22": {
+        "title": "Head-to-head analysis between teams",
+        "level": "Advanced",
+        "query": """
+            SELECT
+                team1,
+                team2,
+                COUNT(*) AS matches_played,
+                SUM(CASE WHEN winning_team = team1 THEN 1 ELSE 0 END) AS team1_wins,
+                SUM(CASE WHEN winning_team = team2 THEN 1 ELSE 0 END) AS team2_wins
+            FROM matches
+            WHERE match_date >= DATE('now', '-3 years')
+            GROUP BY team1, team2
+            HAVING matches_played >= 5;
+        """
+    },
+
+    "Q23": {
+        "title": "Recent player form and momentum",
+        "level": "Advanced",
+        "query": """
+            WITH recent AS (
+                SELECT
+                    b.player_id,
+                    b.runs,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY b.player_id
+                        ORDER BY m.match_date DESC
+                    ) AS rn
+                FROM batting_stats b
+                JOIN matches m ON b.match_id = m.match_id
+            )
+            SELECT
+                p.full_name AS player_name,
+                ROUND(AVG(CASE WHEN rn <= 5 THEN runs END), 2) AS avg_last_5,
+                ROUND(AVG(CASE WHEN rn <= 10 THEN runs END), 2) AS avg_last_10
+            FROM recent
+            JOIN players p ON recent.player_id = p.player_id
+            GROUP BY recent.player_id;
+        """
+    },
+
+    "Q24": {
+        "title": "Most successful batting partnerships",
+        "level": "Advanced",
+        "query": """
+            SELECT
+                p1.full_name AS batsman_1,
+                p2.full_name AS batsman_2,
+                COUNT(*) AS partnerships,
+                ROUND(AVG(bs1.runs + bs2.runs), 2) AS avg_runs
+            FROM batting_stats bs1
+            JOIN batting_stats bs2
+                 ON bs1.match_id = bs2.match_id
+                AND bs1.innings = bs2.innings
+                AND bs1.batting_position + 1 = bs2.batting_position
+            JOIN players p1 ON bs1.player_id = p1.player_id
+            JOIN players p2 ON bs2.player_id = p2.player_id
+            GROUP BY batsman_1, batsman_2
+            HAVING partnerships >= 5
+            ORDER BY avg_runs DESC;
+        """
+    },
+
+    "Q25": {
+        "title": "Quarterly player performance trend",
+        "level": "Advanced",
+        "query": """
+            WITH quarterly AS (
+                SELECT
+                    b.player_id,
+                    strftime('%Y-Q%m', m.match_date) AS period,
+                    AVG(b.runs) AS avg_runs
+                FROM batting_stats b
+                JOIN matches m ON b.match_id = m.match_id
+                GROUP BY b.player_id, period
+            ),
+            trends AS (
+                SELECT
+                    player_id,
+                    period,
+                    avg_runs,
+                    avg_runs -
+                    LAG(avg_runs) OVER (
+                        PARTITION BY player_id
+                        ORDER BY period
+                    ) AS change
+                FROM quarterly
+            )
+            SELECT
+                p.full_name AS player_name,
+                period,
+                avg_runs,
+                CASE
+                    WHEN change > 0 THEN 'Improving'
+                    WHEN change < 0 THEN 'Declining'
+                    ELSE 'Stable'
+                END AS trend
+            FROM trends
+            JOIN players p ON trends.player_id = p.player_id;
+        """
+    },
+
 
 }
