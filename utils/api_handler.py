@@ -37,13 +37,39 @@ def get_live_matches():
 def get_recent_matches():
     return safe_get("/matches/v1/recent")
 
-def get_top_batters(format_type: str = "odi"): #End Point for retriving data of top batsman as per the format(Test,ODI,T20) selected
-    # returns ICC batting rankings instead
-    return safe_get(f"/stats/v1/icc/rankings/{format_type}/batsmen") 
+# def get_top_batters(format_type: str = "odi"): #End Point for retriving data of top batsman as per the format(Test,ODI,T20) selected
+#     # returns ICC batting rankings instead
+#     return safe_get(f"/stats/v1/icc/rankings/{format_type}/batsmen") 
 
-def get_top_bowlers(format_type: str = "odi"):
-    # returns ICC bowling rankings instead
-    return safe_get(f"/stats/v1/icc/rankings/{format_type}/bowlers")
+# def get_top_bowlers(format_type: str = "odi"):
+#     # returns ICC bowling rankings instead
+#     return safe_get(f"/stats/v1/icc/rankings/{format_type}/bowlers")
+
+# def get_top_batters():
+#     return safe_get("/stats/v1/icc/rankings/batsmen")
+
+# def get_top_bowlers():
+#     return safe_get("/stats/v1/icc/rankings/bowlers")
+# def get_top_batters():
+#     return safe_get("/stats/v1/rankings/batsmen")
+
+# def get_top_bowlers():
+#     return safe_get("/stats/v1/rankings/bowlers")
+
+def get_top_batters(format_type: str):
+    return safe_get(
+        "/stats/v1/rankings/batsmen",
+        params={"formatType": format_type}
+    )
+
+def get_top_bowlers(format_type: str):
+    return safe_get(
+        "/stats/v1/rankings/bowlers",
+        params={"formatType": format_type}
+    )
+
+
+
 
 def search_player(name: str):
     return safe_get("/stats/v1/player/search", params={"plrN": name})

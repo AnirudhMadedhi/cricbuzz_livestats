@@ -1,23 +1,61 @@
 import streamlit as st
+import pandas as pd
+
 from utils.api_handler import get_top_batters, get_top_bowlers
+
+st.set_page_config(page_title="Top Player Stats", layout="wide")
 
 st.title("📊 Top Player Stats")
 
-fmt = st.selectbox("Format", ["odi", "test", "t20i"], index=0)
-col1, col2 = st.columns(2)
+# ---------------------------
+# Format Selection
+# ---------------------------
+fmt = st.selectbox(
+    "Format",
+    options=["odi", "test", "t20"],
+    index=0
+)
 
-with col1:
-    st.subheader("Top Batters (Most Runs)")
-    res = get_top_batters(fmt)
-    if res["ok"]:
-        st.json(res["data"])
-    else:
-        st.error(f"Error: {res['status']} - {res['error']}")
+# ---------------------------
+# Top Batters
+# ---------------------------
+st.subheader("🏏 Top Batters (ICC Rankings)")
 
-with col2:
-    st.subheader("Top Bowlers (Most Wickets)")
-    res2 = get_top_bowlers(fmt)
-    if res2["ok"]:
-        st.json(res2["data"])
+batters_res = get_top_batters(fmt)
+
+if not batters_res["ok"]:
+    st.error(f"Batters API Error: {batters_res['error']}")
+else:
+    data = batters_res["data"].get("rank", [])
+
+    if not data:
+        st.warning("No batting data available.")
     else:
-        st.error(f"Error: {res2['status']} - {res2['error']}")
+        df = pd.DataFrame(data)
+
+        cols = ["rank", "name", "country", "rating"]
+        df = df[[c for c in cols if c in df.columns]]
+
+        st.dataframe(df, use_container_width=True)
+
+# ---------------------------
+# Top Bowlers
+# ---------------------------
+st.subheader("🎯 Top Bowlers (ICC Rankings)")
+
+bowlers_res = get_top_bowlers(fmt)
+
+if not bowlers_res["ok"]:
+    st.error(f"Bowlers API Error: {bowlers_res['error']}")
+else:
+    data = bowlers_res["data"].get("rank", [])
+
+    if not data:
+        st.warning("No bowling data available.")
+    else:
+        df = pd.DataFrame(data)
+
+        cols = ["rank", "name", "country", "rating"]
+        df = df[[c for c in cols if c in df.columns]]
+
+        st.dataframe(df, use_container_width=True)
