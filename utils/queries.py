@@ -24,16 +24,19 @@ QUERIES = {
         "title": "Matches played in the last 30 days",
         "level": "Beginner",
         "query": """
-            SELECT
-                match_description,
-                team1,
-                team2,
-                venue_name,
-                venue_city,
-                match_date
-            FROM matches
-            WHERE match_date >= DATE('now', '-30 day')
-            ORDER BY match_date DESC;
+           SELECT
+                m.match_description,
+                m.team1,
+                m.team2,
+                v.venue_name,
+                v.city AS venue_city,
+                m.match_date
+            FROM matches m
+            JOIN venues v
+                ON m.venue_id = v.venue_id
+            WHERE m.match_date <= DATE('now', '-30 day')
+            ORDER BY m.match_date DESC;
+
         """
     },
 
@@ -41,17 +44,18 @@ QUERIES = {
         "title": "Top 10 highest run scorers in ODI cricket",
         "level": "Beginner",
         "query": """
-            SELECT
+                    SELECT
                 p.full_name AS player_name,
-                SUM(b.runs) AS total_runs,
-                ROUND(AVG(b.average), 2) AS batting_average,
-                SUM(b.centuries) AS centuries
-            FROM batting_stats b
-            JOIN players p ON b.player_id = p.player_id
-            WHERE b.format = 'ODI'
-            GROUP BY p.player_id
-            ORDER BY total_runs DESC
+                pfs.runs AS total_runs,
+                pfs.average AS batting_average,
+                pfs.centuries AS centuries
+            FROM player_format_stats pfs
+            JOIN players p
+                ON pfs.player_id = p.player_id
+            WHERE pfs.format = 'odi'
+            ORDER BY pfs.runs DESC
             LIMIT 10;
+
         """
     },
 
@@ -114,15 +118,10 @@ QUERIES = {
         "title": "Cricket series started in the year 2024",
         "level": "Beginner",
         "query": """
-            SELECT
-                series_name,
-                host_country,
-                match_type,
-                start_date,
-                total_matches
+            SELECT *
             FROM series
-            WHERE strftime('%Y', start_date) = '2024'
-            ORDER BY start_date;
+            WHERE strftime('%Y', start_date) = '2024';
+
         """
     },
   
@@ -150,18 +149,20 @@ QUERIES = {
         "title": "Last 20 completed matches",
         "level": "Intermediate",
         "query": """
-            SELECT
-                match_description,
-                team1,
-                team2,
-                winning_team,
-                victory_margin,
-                victory_type,
-                venue_name
-            FROM matches
-            WHERE match_status = 'Completed'
-            ORDER BY match_date DESC
+                    SELECT
+                m.match_description,
+                m.team1,
+                m.team2,
+                m.winning_team,
+                m.victory_margin,
+                m.victory_type,
+                v.venue_name
+            FROM matches m
+            JOIN venues v ON m.venue_id = v.venue_id
+            WHERE m.match_status = 'Completed'
+            ORDER BY m.match_date DESC
             LIMIT 20;
+
         """
     },
 
@@ -170,16 +171,16 @@ QUERIES = {
         "level": "Intermediate",
         "query": """
             SELECT
-                p.full_name AS player_name,
-                SUM(CASE WHEN b.format = 'Test' THEN b.runs ELSE 0 END) AS test_runs,
-                SUM(CASE WHEN b.format = 'ODI' THEN b.runs ELSE 0 END) AS odi_runs,
-                SUM(CASE WHEN b.format = 'T20' THEN b.runs ELSE 0 END) AS t20_runs,
-                ROUND(AVG(b.average), 2) AS overall_batting_average
-            FROM players p
-            JOIN batting_stats b ON p.player_id = b.player_id
+                p.full_name,
+                SUM(CASE WHEN pfs.format = 'test' THEN pfs.runs ELSE 0 END) AS test_runs,
+                SUM(CASE WHEN pfs.format = 'odi' THEN pfs.runs ELSE 0 END) AS odi_runs,
+                SUM(CASE WHEN pfs.format = 't20i' THEN pfs.runs ELSE 0 END) AS t20i_runs,
+                ROUND(AVG(pfs.average), 2) AS overall_avg
+            FROM player_format_stats pfs
+            JOIN players p ON pfs.player_id = p.player_id
             GROUP BY p.player_id
-            HAVING COUNT(DISTINCT b.format) >= 2
-            ORDER BY overall_batting_average DESC;
+            HAVING COUNT(DISTINCT pfs.format) >= 2;
+
         """
     },
 
@@ -295,23 +296,19 @@ QUERIES = {
         "title": "Impact of winning the toss on match outcomes",
         "level": "Advanced",
         "query": """
-            WITH toss_outcomes AS (
-                SELECT
-                    toss_winner,
-                    toss_decision,
-                    winning_team
-                FROM matches
-                WHERE toss_winner IS NOT NULL
-            )
-            SELECT
-                toss_decision,
-                ROUND(
-                    SUM(CASE WHEN toss_winner = winning_team THEN 1 ELSE 0 END) * 100.0
-                    / COUNT(*),
-                    2
-                ) AS win_percentage
-            FROM toss_outcomes
-            GROUP BY toss_decision;
+        SELECT
+            md.toss_decision,
+            COUNT(*) AS total_matches,
+            SUM(CASE WHEN md.toss_winner = m.winning_team THEN 1 ELSE 0 END) AS toss_and_match_wins,
+            ROUND(
+                (SUM(CASE WHEN md.toss_winner = m.winning_team THEN 1 ELSE 0 END) * 100.0)
+                / COUNT(*),
+                2
+            ) AS win_percentage
+        FROM matches m
+        JOIN match_details md ON m.match_id = md.match_id
+        GROUP BY md.toss_decision;
+
         """
     },
 
