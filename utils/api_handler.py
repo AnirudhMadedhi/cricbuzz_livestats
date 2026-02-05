@@ -68,6 +68,34 @@ def get_top_bowlers(format_type: str):
         params={"formatType": format_type}
     )
 
+# def get_batting_records(stats_type: str = "mostRuns", match_type: str = "test"):
+#     """
+#     Fetch batting records like mostRuns, highestScore etc.
+#     match_type: test | odi | t20
+#     """
+#     return safe_get(
+#         "/stats/v1/get-records",
+#         params={
+#             "statsType": stats_type,
+#             "matchType": match_type
+#         }
+#     )
+
+def get_top_stats(stats_type: str = "mostRuns", format_id: int = 0):
+    """
+    Fetch top historical stats from Cricbuzz.
+    format_id:
+        0 = Test
+        1 = ODI
+        2 = T20
+    stats_type:
+        mostRuns, mostWickets, highestScore, bestAverage
+    """
+    return safe_get(
+        f"/stats/v1/topstats/{format_id}",
+        params={"statsType": stats_type}
+    )
+
 
 
 
