@@ -16,12 +16,6 @@ Welcome! This dashboard provides:
 - 📊 **Top player statistics**
 - 🔍 **SQL-driven analytics** on a local database
 - 🛠 **CRUD operations** to practice DB manipulation
-
-**How to use**
-1. Put your RapidAPI key in `.streamlit/secrets.toml` (see README).
-2. Start the app: `streamlit run main.py`.
-3. Use the left sidebar to navigate between pages.
-
 Tip: Live endpoints are cached for 30–60 seconds to avoid hitting rate limits.
 Developed by Anirudh Madedhi as a part of Guvi Data Science Project
 '''
