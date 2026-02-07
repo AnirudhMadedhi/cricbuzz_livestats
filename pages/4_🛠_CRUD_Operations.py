@@ -43,30 +43,73 @@ with tab1:
     st.dataframe(df, use_container_width=True)
 
 # -------- Teams --------
+# -------- Teams --------
 with tab2:
     st.subheader("Create / Update Team")
+
     with st.form("team_form", clear_on_submit=True):
-        name = st.text_input("Team Name")
-        wins = st.number_input("Wins", min_value=0, value=0)
+        team_name = st.text_input("Team Name")
+        country = st.text_input("Country")
         submitted2 = st.form_submit_button("Save Team")
+
         if submitted2:
             with db_cursor() as cur:
                 cur.execute(
-                    "INSERT INTO teams (team_name, wins) VALUES (?, ?) "
-                    "ON CONFLICT(team_name) DO UPDATE SET wins=excluded.wins;",
-                    (name, wins),
+                    """
+                    INSERT INTO teams (team_name, country)
+                    VALUES (?, ?)
+                    ON CONFLICT(team_name)
+                    DO UPDATE SET country = excluded.country;
+                    """,
+                    (team_name, country),
                 )
-            st.success(f"Saved team {name}.")
+            st.success(f"Saved team {team_name}.")
 
     st.divider()
+
     st.subheader("Delete Team")
     del_team = st.text_input("Team name to delete")
     if st.button("Delete", key="del_team"):
         with db_cursor() as cur:
-            cur.execute("DELETE FROM teams WHERE team_name=?", (del_team,))
+            cur.execute(
+                "DELETE FROM teams WHERE team_name = ?;",
+                (del_team,),
+            )
         st.warning(f"Deleted team {del_team}.")
 
     st.divider()
+
     st.subheader("Teams Table")
-    df2 = pd.read_sql_query("SELECT * FROM teams ORDER BY wins DESC;", get_connection())
+    df2 = pd.read_sql_query(
+        "SELECT * FROM teams ORDER BY team_name;",
+        get_connection()
+    )
     st.dataframe(df2, use_container_width=True)
+
+# with tab2:
+#     st.subheader("Create / Update Team")
+#     with st.form("team_form", clear_on_submit=True):
+#         name = st.text_input("Team Name")
+#         wins = st.number_input("Wins", min_value=0, value=0)
+#         submitted2 = st.form_submit_button("Save Team")
+#         if submitted2:
+#             with db_cursor() as cur:
+#                 cur.execute(
+#                     "INSERT INTO teams (team_name, wins) VALUES (?, ?) "
+#                     "ON CONFLICT(team_name) DO UPDATE SET wins=excluded.wins;",
+#                     (name, wins),
+#                 )
+#             st.success(f"Saved team {name}.")
+
+#     st.divider()
+#     st.subheader("Delete Team")
+#     del_team = st.text_input("Team name to delete")
+#     if st.button("Delete", key="del_team"):
+#         with db_cursor() as cur:
+#             cur.execute("DELETE FROM teams WHERE team_name=?", (del_team,))
+#         st.warning(f"Deleted team {del_team}.")
+
+#     st.divider()
+#     st.subheader("Teams Table")
+#     df2 = pd.read_sql_query("SELECT * FROM teams ORDER BY wins DESC;", get_connection())
+#     st.dataframe(df2, use_container_width=True)

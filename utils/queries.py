@@ -129,19 +129,37 @@ QUERIES = {
         "title": "All-rounders with 1000+ runs and 50+ wickets",
         "level": "Intermediate",
         "query": """
+           WITH batting AS (
+                SELECT
+                    player_id,
+                    format,
+                    SUM(runs) AS total_runs
+                FROM batting_stats
+                GROUP BY player_id, format
+            ),
+            bowling AS (
+                SELECT
+                    player_id,
+                    format,
+                    SUM(wickets) AS total_wickets
+                FROM bowling_stats
+                GROUP BY player_id, format
+            )
             SELECT
                 p.full_name AS player_name,
-                SUM(b.runs) AS total_runs,
-                SUM(w.wickets) AS total_wickets,
+                b.total_runs,
+                w.total_wickets,
                 b.format
             FROM players p
-            JOIN batting_stats b ON p.player_id = b.player_id
-            JOIN bowling_stats w 
-                 ON p.player_id = w.player_id AND b.format = w.format
-            WHERE p.playing_role = 'All-rounder'
-            GROUP BY p.player_id, b.format
-            HAVING total_runs > 1000 AND total_wickets > 50
-            ORDER BY total_runs DESC;
+            JOIN batting b ON p.player_id = b.player_id
+            JOIN bowling w 
+                ON b.player_id = w.player_id 
+                AND b.format = w.format
+            WHERE p.playing_role = 'Allrounder'
+            AND b.total_runs > 1000
+            AND w.total_wickets > 50
+            ORDER BY b.total_runs DESC;
+
         """
     },
 
@@ -208,20 +226,22 @@ QUERIES = {
         "title": "Batting partnerships of 100+ runs",
         "level": "Intermediate",
         "query": """
-            SELECT
-                p1.full_name AS batsman_1,
-                p2.full_name AS batsman_2,
-                (bs1.runs + bs2.runs) AS partnership_runs,
-                bs1.innings
-            FROM batting_stats bs1
-            JOIN batting_stats bs2
-                 ON bs1.match_id = bs2.match_id
-                AND bs1.innings = bs2.innings
-                AND bs1.batting_position + 1 = bs2.batting_position
-            JOIN players p1 ON bs1.player_id = p1.player_id
-            JOIN players p2 ON bs2.player_id = p2.player_id
-            WHERE (bs1.runs + bs2.runs) >= 100
-            ORDER BY partnership_runs DESC;
+                SELECT
+            p1.full_name AS batsman_1,
+            p2.full_name AS batsman_2,
+            (bs1.runs + bs2.runs) AS partnership_runs,
+            bs1.innings
+        FROM batting_stats bs1
+        JOIN batting_stats bs2
+            ON bs1.match_id = bs2.match_id
+            AND bs1.innings = bs2.innings
+            AND bs1.team = bs2.team              -- ✅ SAME TEAM
+            AND bs1.batting_position + 1 = bs2.batting_position
+        JOIN players p1 ON bs1.player_id = p1.player_id
+        JOIN players p2 ON bs2.player_id = p2.player_id
+        WHERE (bs1.runs + bs2.runs) >= 100
+        ORDER BY partnership_runs DESC;
+
         """
     },
 
@@ -452,21 +472,25 @@ QUERIES = {
         "title": "Most successful batting partnerships",
         "level": "Advanced",
         "query": """
-            SELECT
+                    SELECT
                 p1.full_name AS batsman_1,
                 p2.full_name AS batsman_2,
                 COUNT(*) AS partnerships,
                 ROUND(AVG(bs1.runs + bs2.runs), 2) AS avg_runs
             FROM batting_stats bs1
             JOIN batting_stats bs2
-                 ON bs1.match_id = bs2.match_id
+                ON bs1.match_id = bs2.match_id
                 AND bs1.innings = bs2.innings
+                AND bs1.team = bs2.team              -- ✅ SAME TEAM CONSTRAINT
                 AND bs1.batting_position + 1 = bs2.batting_position
             JOIN players p1 ON bs1.player_id = p1.player_id
             JOIN players p2 ON bs2.player_id = p2.player_id
-            GROUP BY batsman_1, batsman_2
+            GROUP BY
+                p1.full_name,
+                p2.full_name
             HAVING partnerships >= 5
             ORDER BY avg_runs DESC;
+
         """
     },
 
